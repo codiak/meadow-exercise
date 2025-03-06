@@ -8,8 +8,8 @@ This is a simple FastAPI app with one Inngest function that listens for "movie.w
 - The movie title is expected to be an exact match to the title in the OMDb API. Presumably the "move.watched" event would be downstream of a movie selection event, so the title would be known.
 - The recipient email is expected to be a valid email address. That is, email address validation, and guaranteeing a valid email address, are handled at user signup.
 - OMDb API usage assumes a per-minute rate limit, retrying again in 30 minutes. This delay also assumes that the email does not need to be timely, otherwise it would be better to communicate an error to the user.
-- This email type is assumed to be used occasionally, so emails are debounced to 1 per minute to prevent accidental spamming.
-- Apart from debouncing, identical emails to the same user (same movie) are allowed, and each event is treated as new. If this is not the desired behavior, a unique id (idempotency key) should be included in the event.
+- This email type is assumed to be used occasionally, so emails are rate limited to 1 per minute to prevent accidental spamming.
+- Apart from rate limiting, identical emails to the same user (same movie) are allowed, and each event is treated as new. If this is not the desired behavior, a unique id (idempotency key) should be included in the event.
 
 
 ## Exercise Improvements

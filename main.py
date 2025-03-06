@@ -1,3 +1,6 @@
+import dotenv
+dotenv.load_dotenv()
+
 from datetime import timedelta
 import logging
 from fastapi import FastAPI
@@ -21,11 +24,12 @@ inngest_client = inngest.Inngest(
 @inngest_client.create_function(
     fn_id="movie_watched_email",
     trigger=inngest.TriggerEvent(event=MovieWatchedEvent.name),
-    debounce={
+    rate_limit=inngest.RateLimit(
         # Prevent spamming the user
-        "period": timedelta(minutes=1),
-        "key": 'event.data.recipient_email',
-    },
+        limit=1,
+        period=timedelta(minutes=1),
+        key='event.data.recipient_email',
+    ),
 )
 async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> str:
     # Validate event data

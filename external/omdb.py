@@ -1,10 +1,10 @@
 import os
 import httpx
-import dotenv
-from inngest import NonRetriableError
+from inngest import NonRetriableError, RetryAfterError
 
-dotenv.load_dotenv()
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
+client = httpx.AsyncClient()
+
 
 async def get_movie_plot(title: str) -> str:
     """
@@ -13,6 +13,7 @@ async def get_movie_plot(title: str) -> str:
     Args:
         title: Exact movie title to search for.
     """
+    print("RUNNING!")
     if not OMDB_API_KEY:
         raise Exception("OMDB API key is missing!")
 
@@ -20,12 +21,14 @@ async def get_movie_plot(title: str) -> str:
     url = f"http://www.omdbapi.com/?t={title}&plot=full{omdb_param}"
 
     try:
-        # TODO: use async client
-        response = httpx.get(url)
+        response = await client.get(url)
         response.raise_for_status()
     except httpx.HTTPError as e:
-        # HTTP status codes that should be retried:
-        if response.status_code in [408, 429, 500, 502, 503, 504]:
+        if response.status_code == 429:
+            # Explicitly backoff if rate limited
+            raise RetryAfterError(f"OMDB API rate limit exceeded: {e}", "30m")
+        elif response.status_code in [408, 500, 502, 503, 504]:
+            # Other HTTP status codes that should be retried:
             raise Exception(f"OMDB API request failed (will retry): {e}")
         else:
             raise NonRetriableError(f"OMDB API request failed: {e}")

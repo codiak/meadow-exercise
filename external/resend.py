@@ -1,10 +1,8 @@
 import os
 
 import resend
-import dotenv
 from inngest import NonRetriableError
 
-dotenv.load_dotenv()
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 resend.api_key = RESEND_API_KEY
 
