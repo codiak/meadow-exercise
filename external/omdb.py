@@ -4,14 +4,20 @@ import dotenv
 from inngest import NonRetriableError
 
 dotenv.load_dotenv()
-OMDB_API_KEY = os.getenv("OMDB_KEY")
+OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 
 async def get_movie_plot(title: str) -> str:
+    """
+    Get movie plot from OMDB API, for use as Inngest function.
+
+    Args:
+        title: Exact movie title to search for.
+    """
     if not OMDB_API_KEY:
         raise Exception("OMDB API key is missing!")
 
     omdb_param = f"&apikey={OMDB_API_KEY}"
-    url = f"http://www.omdbapi.com/?t={title}{omdb_param}"
+    url = f"http://www.omdbapi.com/?t={title}&plot=full{omdb_param}"
 
     try:
         # TODO: use async client
@@ -25,7 +31,7 @@ async def get_movie_plot(title: str) -> str:
             raise NonRetriableError(f"OMDB API request failed: {e}")
 
     data = response.json()
-    if "Plot" not in data:
+    if "Plot" not in data or data["Plot"] == "N/A":
         raise NonRetriableError(f"Plot not found for movie: {title}")
 
     return data["Plot"]

@@ -1,3 +1,4 @@
+from datetime import timedelta
 import logging
 from fastapi import FastAPI
 import inngest
@@ -5,6 +6,8 @@ import inngest.fast_api
 import httpx
 
 from external.omdb import get_movie_plot
+from external.resend import send_email
+
 
 inngest_client = inngest.Inngest(
     app_id="meadow_exercise",
@@ -29,6 +32,9 @@ async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> None:
     # TODO: Determine backoff/retry strategy
     plot = await step.run("Get Movie Plot", get_movie_plot, title)
     ctx.logger.info(plot)
+    subject = f"Plot for {title}"
+    status = await step.run("Send Email", send_email, data['recipient_email'], subject, plot)
+    ctx.logger.info(status)
 
 app = FastAPI()
 
