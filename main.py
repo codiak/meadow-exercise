@@ -3,8 +3,10 @@ import logging
 from fastapi import FastAPI
 import inngest
 import inngest.fast_api
+from inngest import NonRetriableError
 import httpx
 
+from models import MovieWatchedEvent
 from external.omdb import get_movie_plot
 from external.resend import send_email
 
@@ -24,17 +26,25 @@ inngest_client = inngest.Inngest(
 # }
 @inngest_client.create_function(
     fn_id="movie_watched_email",
-    trigger=inngest.TriggerEvent(event="meadow_api/movie.watched"),
+    trigger=inngest.TriggerEvent(event=MovieWatchedEvent.name),
 )
 async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> str:
-    data = ctx.event.data
-    ctx.logger.info(data)
-    title = data['movie_title']
+    # Validate event data
+    try:
+        event = MovieWatchedEvent.from_event(ctx.event)
+    except Exception as e:
+        raise NonRetriableError(f"Invalid event data: {e}")
+    data = event.data
+    ctx.logger.debug(data)
+
+    # Get plot
     # TODO: Determine backoff/retry strategy
-    plot = await step.run("Get Movie Plot", get_movie_plot, title)
-    ctx.logger.info(plot)
-    subject = f"Plot for {title}"
-    email_id = await step.run("Send Email", send_email, data['recipient_email'], subject, plot)
+    plot = await step.run("Get Movie Plot", get_movie_plot, data.movie_title)
+    ctx.logger.debug(plot)
+
+    # Send email
+    subject = f"Plot for {data.movie_title}"
+    email_id = await step.run("Send Email", send_email, data.recipient_email, subject, plot)
 
     if RESEND_WEBOOKS:
         # Configuration: https://www.inngest.com/docs/guides/resend-webhook-events
