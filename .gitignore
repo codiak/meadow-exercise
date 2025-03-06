@@ -1,0 +1,7 @@
+# Sensitive
+.env
+
+# Python
+.ropeproject
+.venv/
+__pycache__/
