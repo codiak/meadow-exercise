@@ -17,13 +17,7 @@ inngest_client = inngest.Inngest(
     logger=logging.getLogger("uvicorn"),
 )
 
-# TODO: Type validation for message format
-# {
-#     "name": "meadow_api/movie.watched",
-#     "data": {
-#       "movie_title": "The Matrix", "recipient_email": "clem@test.com"
-#     }
-# }
+
 @inngest_client.create_function(
     fn_id="movie_watched_email",
     trigger=inngest.TriggerEvent(event=MovieWatchedEvent.name),

@@ -12,7 +12,7 @@ resend.api_key = RESEND_API_KEY
 async def send_email(to: str, subject: str, html: str) -> str:
     try:
         email = resend.Emails.send({
-            "from": "onboarding@resend.dev",
+            "from": "onboarding@resend.dev",  # TODO: Use an address on the correct domain
             "to": to,
             "subject": subject,
             "html": html
