@@ -21,6 +21,11 @@ inngest_client = inngest.Inngest(
 @inngest_client.create_function(
     fn_id="movie_watched_email",
     trigger=inngest.TriggerEvent(event=MovieWatchedEvent.name),
+    debounce={
+        # Prevent spamming the user
+        "period": timedelta(minutes=1),
+        "key": 'event.data.recipient_email',
+    },
 )
 async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> str:
     # Validate event data
@@ -31,24 +36,25 @@ async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> str:
     data = event.data
     ctx.logger.debug(data)
 
-    # Get plot
-    # TODO: Determine backoff/retry strategy
+    # Get plot (only pass title to leverage Inngest's memoization)
     plot = await step.run("Get Movie Plot", get_movie_plot, data.movie_title)
     ctx.logger.debug(plot)
 
     # Send email
     subject = f"Plot for {data.movie_title}"
+    # If new inbox, "warmup" by using throttling
     email_id = await step.run("Send Email", send_email, data.recipient_email, subject, plot)
 
     if RESEND_WEBOOKS:
         # Configuration: https://www.inngest.com/docs/guides/resend-webhook-events
         await step.wait_for_event(
-            "wait_for_email_delivered",
-            event="resend/email.delivered",
+            "wait_for_email_sent",
+            event="resend/email.sent",
             timeout=timedelta(seconds=10),
         )
 
     return f"Email sent: {email_id}"
+
 
 app = FastAPI()
 
