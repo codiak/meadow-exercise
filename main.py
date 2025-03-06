@@ -8,6 +8,7 @@ import httpx
 from external.omdb import get_movie_plot
 from external.resend import send_email
 
+RESEND_WEBOOKS = False
 
 inngest_client = inngest.Inngest(
     app_id="meadow_exercise",
@@ -25,7 +26,7 @@ inngest_client = inngest.Inngest(
     fn_id="movie_watched_email",
     trigger=inngest.TriggerEvent(event="meadow_api/movie.watched"),
 )
-async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> None:
+async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> str:
     data = ctx.event.data
     ctx.logger.info(data)
     title = data['movie_title']
@@ -33,8 +34,17 @@ async def movie_watched_email(ctx: inngest.Context, step: inngest.Step) -> None:
     plot = await step.run("Get Movie Plot", get_movie_plot, title)
     ctx.logger.info(plot)
     subject = f"Plot for {title}"
-    status = await step.run("Send Email", send_email, data['recipient_email'], subject, plot)
-    ctx.logger.info(status)
+    email_id = await step.run("Send Email", send_email, data['recipient_email'], subject, plot)
+
+    if RESEND_WEBOOKS:
+        # Configuration: https://www.inngest.com/docs/guides/resend-webhook-events
+        await step.wait_for_event(
+            "wait_for_email_delivered",
+            event="resend/email.delivered",
+            timeout=timedelta(seconds=10),
+        )
+
+    return f"Email sent: {email_id}"
 
 app = FastAPI()
 
